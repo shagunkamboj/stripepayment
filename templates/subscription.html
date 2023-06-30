@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Stripe Subscription</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    .card-input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .error-message {
+      color: red;
+    }
+    .success-message {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stripe Subscription</h1>
+
+  <div class="card-input">
+    <label for="card-element">
+      Enter Card Details:
+    </label>
+    <div id="card-element">
+      <!-- Card element will be inserted here -->
+    </div>
+    <div id="card-errors" role="alert"></div>
+  </div>
+
+  <button id="subscribe-button">Subscribe</button>
+
+  <div id="success-message" class="success-message" style="display: none;">
+    Payment Successful!
+  </div>
+
+  <script>
+    var stripe = Stripe('pk_test_51NKwuYSErS4Hkbpk7ogRr6X40o6vDXwaw9TtDkZ1A1xQfMlxfTWJxDP4mNDlsVMQlA3iR0N4YHwzi1m4TrGeGxB700nGJRbMnf');
+    var elements = stripe.elements();
+    var cardElement = elements.create('card');
+
+    cardElement.mount('#card-element');
+
+    var cardErrors = document.getElementById('card-errors');
+    var subscribeButton = document.getElementById('subscribe-button');
+    var successMessage = document.getElementById('success-message');
+
+    cardElement.on('change', function(event) {
+      if (event.error) {
+        cardErrors.textContent = event.error.message;
+      } else {
+        cardErrors.textContent = '';
+      }
+    });
+
+    subscribeButton.addEventListener('click', function() {
+      subscribeButton.disabled = true;
+
+      // Create a subscription on the server
+      fetch('http://localhost:8000/create-subscription/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'shagun.kamboj@netsolutions.com',
+          name: 'shagun',
+          priceId: 'price_1NOYzeSErS4HkbpkmHZ9cH03', 
+        }),
+      }).then(function(response) {
+        return response.json();
+      }).then(function(result) {
+        // Handle the response from the server
+        if (result.error) {
+          cardErrors.textContent = result.error.message;
+          subscribeButton.disabled = false;
+        } else {
+          // Subscription creation successful, confirm payment with client secret
+          stripe.confirmCardPayment(result.clientSecret, {
+            payment_method: {
+              card: cardElement,
+            }
+          }).then(function(paymentResult) {
+            if (paymentResult.error) {
+              cardErrors.textContent = paymentResult.error.message;
+              subscribeButton.disabled = false;
+            } else {
+              // Payment and subscription succeeded
+              // Perform necessary actions or show success message to the user
+              // You can also make a request to your backend API to update the subscription status
+
+              // Show success message
+              successMessage.style.display = 'block';
+
+              // Example: Redirect to a success page
+              // window.location.href = 'http://localhost:5500/success.html';
+            }
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
